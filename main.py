@@ -32,7 +32,7 @@ st.info("""
 - Analyse the results (Accuracy, MAE, Recall, Precision, F1)
 """)
 
-class MlSteramlitApp:
+class MlStreamlitApp:
 
     def __init__(self):
         self.dataset_list = data()
@@ -129,5 +129,5 @@ class MlSteramlitApp:
                 st.write(round(r2_metrics,2),round(mse,2),round(rmse,2),round(mae,2))
 
 if __name__ == '__main__':
-    a = MlSteramlitApp()
+    a = MlStreamlitApp()
     a.run()
