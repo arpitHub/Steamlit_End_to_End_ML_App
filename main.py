@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+from PIL import Image
 from pydataset import data
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
@@ -9,7 +10,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.metrics import precision_recall_fscore_support
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import r2_score,mean_squared_error
+from sklearn.metrics import r2_score,mean_squared_error,mean_absolute_error
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.gaussian_process import GaussianProcessClassifier
@@ -21,10 +22,9 @@ from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 
 #import pandas as pd
 
-st.beta_container()
+st.header('Try end to end predictive modeling on different datasets')
 
-st.write("""
-## Try end to end predictive modeling on different datasets
+st.info("""
 - Pick the dataset
 - Validate the dataset
 - Prepare the dataset (Impute/Scaling/Categorical Encoding/Imbalance)
@@ -32,109 +32,102 @@ st.write("""
 - Analyse the results (Accuracy, MAE, Recall, Precision, F1)
 """)
 
+class MlSteramlitApp:
 
-#st.bar_chart(iris)
-dataset_list = data()
-dataset_name = st.selectbox('Select the Dataset', list(dataset_list.dataset_id))
+    def __init__(self):
+        self.dataset_list = data()
 
-st.write(str(dataset_name))
+    def run(self):
+        st.sidebar.title('Streamlit ML App')
+        dataset_list=['']+list(self.dataset_list.dataset_id)        
+        dataset_name = st.sidebar.selectbox('Select the Dataset',dataset_list)
+        if dataset_name == '':
+            st.sidebar.warning('Select the Dataset')
+        else:
+            df = data(str(dataset_name))
+            df.columns = df.columns.str.replace('.','_')
+            df.columns = df.columns.str.lower()
+            st.write(df.head())
+            #image = Image.open('./ml_process.jpeg')
+            #st.sidebar.image(image)
+            dataset_target = st.selectbox('Select the Target', list(df.columns))
+            df=df.rename(columns={dataset_target:'target'})
 
-df = data(str(dataset_name))
-df.columns = df.columns.str.replace('.','_')
-df.columns = df.columns.str.lower()
-st.write(df.head())
+            df_dum=pd.get_dummies(df.loc[:, df.columns != 'target'],drop_first=True)
+            df=pd.concat([df_dum,df.target],axis=1)
 
-dataset_target = st.selectbox('Select the Target', list(df.columns))
+            #algo_type = st.selectbox('Classification or Regression', list(['Classification','Regression']))
 
-st.write(dataset_target)
+            if df.target.dtypes == 'object':
+                algo_type='Classification'
+                ml_algos = ['LogisticRegression','DecisionTreeClassifier','RandomForestClassifier','AdaBoostClassifier']
+            else:
+                algo_type='Regression'
+                ml_algos = ['LinearRegression']
 
-df=df.rename(columns={dataset_target:'target'})
+            # if algo_type == 'Classification':
+            #     ml_algos = ['LogisticRegression','DecisionTreeClassifier','RandomForestClassifier','AdaBoostClassifier']
 
-st.write(df.head())
+            # else:
+            #     ml_algos = ['LinearRegression']
 
-df_dum=pd.get_dummies(df.loc[:, df.columns != 'target'],drop_first=True)
-st.write(df_dum.head())
-st.write(df.target.head())
-df=pd.concat([df_dum,df.target],axis=1)
+            X= df.loc[:, df.columns != 'target']
+            y= df['target']
 
-#algo_type = st.selectbox('Classification or Regression', list(['Classification','Regression']))
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=42)
 
-if df.target.dtypes == 'object':
-    algo_type='Classification'
-    ml_algos = ['LogisticRegression','DecisionTreeClassifier','RandomForestClassifier','AdaBoostClassifier']
-else:
-    algo_type='Regression'
-    ml_algos = ['LinearRegression']
+            #st.write(X_train.head())
+            #st.write(y_test.head())
 
-# if algo_type == 'Classification':
-#     ml_algos = ['LogisticRegression','DecisionTreeClassifier','RandomForestClassifier','AdaBoostClassifier']
+            ml_algo = st.selectbox('Select the ML Algo', list(ml_algos))
 
-# else:
-#     ml_algos = ['LinearRegression']
+            if ml_algo == 'LogisticRegression':
+                clf_fit = LogisticRegression().fit(X_train, y_train)
+                predictions = clf_fit.predict(X_test)
+                st.write(predictions[1:5])
+            elif ml_algo == 'DecisionTreeClassifier':
+                clf_fit = DecisionTreeClassifier().fit(X_train, y_train)
+                predictions = clf_fit.predict(X_test)
+                st.write(predictions[1:5])
+                #RandomForestClassifier
+            elif ml_algo == 'RandomForestClassifier':
+                clf_fit = RandomForestClassifier().fit(X_train, y_train)
+                predictions = clf_fit.predict(X_test)
+                st.write(predictions[1:5])
+            elif ml_algo == 'AdaBoostClassifier':
+                clf_fit = AdaBoostClassifier().fit(X_train, y_train)
+                predictions = clf_fit.predict(X_test)
+                st.write(predictions[1:5])
+            elif ml_algo == 'LinearRegression':
+                clf_fit = LinearRegression().fit(X_train, y_train)
+                predictions = clf_fit.predict(X_test)
+                st.write(predictions[1:5])           
+            else:
+                st.write('No ML Algo selected')
 
-X= df.loc[:, df.columns != 'target']
-y= df['target']
+            if algo_type=='Classification':
+                st.write("""
+                    Confusion Matrix
+                """)
+                st.write(confusion_matrix(y_test, predictions))
+                st.write("""
+                #### Accuracy Score:
+                """)
+                st.write( accuracy_score(y_test, predictions))
+                st.write("""
+                #### Other Scores - precision_recall_fscore:
+                """)
+                precision,recall,f1_score,support=precision_recall_fscore_support(y_test, predictions,average='weighted')
+                st.write(round(precision,2),round(recall,2),round(f1_score,2))
+            else:
+                st.write("""  ### Model Evaluation   """)
+                r2_metrics = r2_score(y_test, predictions)
+                mse = mean_squared_error(y_test, predictions)
+                rmse = np.sqrt(mse)
+                mae=mean_absolute_error(y_test, predictions)
+                st.write("""  #### Rsquared, MSE , RMSE, MAE """)
+                st.write(round(r2_metrics,2),round(mse,2),round(rmse,2),round(mae,2))
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=42)
-
-#st.write(X_train.head())
-#st.write(y_test.head())
-
-ml_algo = st.selectbox('Select the ML Algo', list(ml_algos))
-
-if ml_algo == 'LogisticRegression':
-    clf_fit = LogisticRegression().fit(X_train, y_train)
-    predictions = clf_fit.predict(X_test)
-    st.write(predictions[1:5])
-elif ml_algo == 'DecisionTreeClassifier':
-    clf_fit = DecisionTreeClassifier().fit(X_train, y_train)
-    predictions = clf_fit.predict(X_test)
-    st.write(predictions[1:5])
-    #RandomForestClassifier
-elif ml_algo == 'RandomForestClassifier':
-    clf_fit = RandomForestClassifier().fit(X_train, y_train)
-    predictions = clf_fit.predict(X_test)
-    st.write(predictions[1:5])
-elif ml_algo == 'AdaBoostClassifier':
-    clf_fit = AdaBoostClassifier().fit(X_train, y_train)
-    predictions = clf_fit.predict(X_test)
-    st.write(predictions[1:5])
-elif ml_algo == 'LinearRegression':
-    clf_fit = LinearRegression().fit(X_train, y_train)
-    predictions = clf_fit.predict(X_test)
-    st.write(predictions[1:5])
-    st.write("""  ### Model Evaluation   """)
-    r2_metrics = r2_score(y_test, predictions)
-    mse = mean_squared_error(y_test, predictions)
-    rmse = np.sqrt(mse)
-    r2_metrics,mse,rmse
-else:
-    st.write('No ML Algo selected')
-
-if algo_type=='Classification':
-    st.write("""
-        Confusion Matrix
-    """)
-    st.write(confusion_matrix(y_test, predictions))
-    st.write("""
-    #### Accuracy Score:
-    """)
-    st.write( accuracy_score(y_test, predictions))
-    st.write("""
-    #### Other Scores - precision_recall_fscore:
-    """)
-    precision,recall,f1_score,support=precision_recall_fscore_support(y_test, predictions,average='weighted')
-    st.write(round(precision,2),round(recall,2),round(f1_score,2))
-else:
-    pass
-
-# if dataset_name == 'iris':
-#     iris = data('iris')
-#     iris.columns= iris.columns.str.replace('.','_')
-#     iris.columns = iris.columns.str.lower()
-#     st.write(iris.head())
-# elif dataset_name == 'titanic':
-#      titanic = data('titanic')
-#      st.write(titanic.head())         
-
-
+if __name__ == '__main__':
+    a = MlSteramlitApp()
+    a.run()
