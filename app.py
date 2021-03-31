@@ -129,5 +129,5 @@ class MlStreamlitApp:
                 st.write(round(r2_metrics,2),round(mse,2),round(rmse,2),round(mae,2))
 
 if __name__ == '__main__':
-    a = MlStreamlitApp()
-    a.run()
+    mlApp = MlStreamlitApp()
+    mlApp.run()
