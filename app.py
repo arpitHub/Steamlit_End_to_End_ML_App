@@ -34,7 +34,7 @@ st.info("""
 
 class MlStreamlitApp:
 
-    @st.cache
+    #@st.cache
     def __init__(self):
         self.dataset_list = data()
 
